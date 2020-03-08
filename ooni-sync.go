@@ -84,6 +84,31 @@ const numDownloadThreads = 5
 // Controlled by the -directory option.
 var outputDirectory = "."
 
+// Controlled by the -s3-direct option.
+var downloadURLTransform = identityURLTransform
+
+func identityURLTransform(urlString string) string {
+	return urlString
+}
+
+func s3DirectURLTransform(urlString string) string {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return urlString
+	}
+	if u.Scheme == "https" && u.Host == "api.ooni.io" {
+		pathComponents := strings.SplitN(path.Clean(u.Path), "/files/download/", 2)
+		if len(pathComponents) == 2 {
+			return (&url.URL{
+				Scheme: "https",
+				Host:   "ooni-data.s3.amazonaws.com",
+				Path:   "/autoclaved/jsonl/" + pathComponents[1],
+			}).String()
+		}
+	}
+	return urlString
+}
+
 // The -xz option changes these.
 var outputExtension = ""
 var downloadFilter = identityFilter
@@ -342,7 +367,7 @@ func processIndex(query url.Values, downloadURLChan chan<- string) error {
 			if result.DownloadURL == "" {
 				return fmt.Errorf("missing %q field", "download_url")
 			}
-			downloadURLChan <- result.DownloadURL
+			downloadURLChan <- downloadURLTransform(result.DownloadURL)
 		}
 
 		if offset == indexPage.Metadata.Count {
@@ -417,10 +442,12 @@ func logError(downloadURL string, err error) {
 }
 
 func main() {
+	var s3Direct bool
 	var xz bool
 
 	flag.Usage = usage
 	flag.StringVar(&outputDirectory, "directory", outputDirectory, "directory in which to save results")
+	flag.BoolVar(&s3Direct, "s3-direct", xz, "download results from ooni-data.s3.amazonaws.com rather than api.ooni.io")
 	flag.BoolVar(&xz, "xz", xz, "compress downloads with xz")
 	flag.Parse()
 
@@ -428,6 +455,10 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
+	}
+
+	if s3Direct {
+		downloadURLTransform = s3DirectURLTransform
 	}
 
 	if xz {
