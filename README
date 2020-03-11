@@ -1,3 +1,7 @@
+ooni-sync now supports downloading OONI reports from the AWS S3 bucket
+[ooni-data](https://registry.opendata.aws/ooni/). Please use the option
+`-s3-direct` to download OONI reports from the AWS S3 bucket.
+
 ATTENTION: OONI now offers a full database to quicky access all the data 
 and the use of the OONI Sync tool is no longer recommended. For all the 
 options available to access OONI data see: https://ooni.org/data/.
@@ -8,7 +12,7 @@ that are not already present locally. You can run it again and again to
 keep a local directory up to date with newly published reports.
 
 Example usage:
-	ooni-sync -xz -directory reports test_name=tcp_connect
+	ooni-sync -s3-direct -xz -directory reports test_name=tcp_connect
 This command will create the directory "reports" if it doesn't exist,
 download all tcp_connect reports that are not already present in the
 directory, and compress the downloaded reports with xz.
